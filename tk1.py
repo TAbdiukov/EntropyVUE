@@ -258,8 +258,9 @@ class AnalyzerContext:
 	def update_label(self, event):
 		try:
 			bar = self.chart.smart_bars[int(event.x // (self.scale * self.aspect_ratio))]
+			display_id = hex(bar.id).zfill(2) + " ("+str(bar.id).zfill(2)+")"
 			display_height = round(bar.height, 2)
-			self.label.config(text=f"Bar ID: {bar.id}, Height: {display_height}")
+			self.label.config(text=f"Byte: {display_id}, Height: {display_height}")
 		except IndexError as e:
 			pass
 
