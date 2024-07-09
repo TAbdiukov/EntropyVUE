@@ -1,5 +1,4 @@
 
-
 import tkinter as tk
 import random
 from tkinter import filedialog
@@ -113,7 +112,6 @@ class FileResearchProcessor:
 		entropy = sum(dataset)/100
 
 		return entropy, dataset
-
 
 	def _calculate_entropy_log2_shannon(self):
 		byte_frequencies = self.listing.copy()
