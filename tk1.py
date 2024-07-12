@@ -345,9 +345,12 @@ class AnalyzerContext:
 	def demo(self):
 		data = [0]*ALPHABET
 		for i in range(ALPHABET):
-			data[i] = random.randint(i//(ceil(ALPHABET/MAX_HEIGHT)),MAX_HEIGHT)
+			data[i] = (i*MAX_HEIGHT/ALPHABET)+random.randint(0, (ceil(ALPHABET/MAX_HEIGHT)))
 		self.smart_bars = data
 		self.draw_chart(data, self.scale, self.aspect_ratio)
+		# Add centered text
+		self.canvas.create_text((ALPHABET*self.scale*self.aspect_ratio)/2, (MAX_HEIGHT*self.scale)/2, font=("TkDefaultFont", self.scale*6), fill="white", text="EntropyVUE Demo")
+
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Calculate entropies...')
