@@ -2,17 +2,15 @@
 # -*- coding: utf8 -*-
 
 import tkinter as tk
-import random
 from tkinter import filedialog
 from tkinter import simpledialog
 
-
+import argparse
 from math import log2, log10, ceil
+import random
 
 # Fast IO
 import mmap
-
-import argparse
 
 ALPHABET = 256
 MAX_HEIGHT = 100
