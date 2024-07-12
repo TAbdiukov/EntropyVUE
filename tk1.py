@@ -55,11 +55,11 @@ class FileResearchProcessor:
 		self.entropy_dict = {}
 
 	strategies = {
-		'normal': {"human_readable": "Normalized", 'func': '_calculate_normalized_entropy'},
-		'shannon': {"human_readable": "Shannon", 'func': '_calculate_shannon_entropy'},
-		'log2→shannon': {"human_readable": "Shannon of Log2", 'func': '_calculate_entropy_log2_shannon'},
-		'log2→normal': {"human_readable": "Normalized of Log2", 'func': '_calculate_entropy_log2_normalized'},
-		'log10→normal': {"human_readable": "Normalized of Log10", 'func': '_calculate_entropy_log10_normalized'}
+		'normalised(in)': {"human_readable": "Normalized", 'func': '_calculate_normalized_entropy'},
+		'normalised[log2(in)]': {"human_readable": "Normalized of Log2", 'func': '_calculate_entropy_log2_normalized'},
+		'normalised[log10(in)]': {"human_readable": "Normalized of Log10", 'func': '_calculate_entropy_log10_normalized'},
+		'shannon(in)': {"human_readable": "Shannon", 'func': '_calculate_shannon_entropy'},
+		'shannon[log2(in)]': {"human_readable": "Shannon of Log2", 'func': '_calculate_entropy_log2_shannon'}
 	}
 
 	def process_file(self):
