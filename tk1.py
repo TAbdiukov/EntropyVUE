@@ -313,16 +313,18 @@ class AnalyzerContext:
 
 		tk.Button(window, text="Save", command=self.save_config).grid(row=3, columnspan=2)
 
+	def redraw_hard(self):
+		self.process_file()
+		self.canvas.configure(width=ALPHABET*context.scale*context.aspect_ratio)
+		self.canvas.configure(height=MAX_HEIGHT*context.scale)
+		self.redraw_from_option()
+
 	def save_config(self):
 		global MAX_HEIGHT, ALPHABET
 		MAX_HEIGHT = int(self.max_height_entry.get())
 		ALPHABET = int(self.alphabet_entry.get())
 		self.scale = float(self.scale_entry.get())
-
-		self.process_file()
-		self.canvas.configure(width=ALPHABET*context.scale*context.aspect_ratio)
-		self.canvas.configure(height=MAX_HEIGHT*context.scale)
-		self.redraw_from_option()
+		self.redraw_hard()
 
 	def open_file_interactive(self):
 		self.file_path = filedialog.askopenfilename()
