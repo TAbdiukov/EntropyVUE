@@ -38,7 +38,7 @@ class Chart:
 	def draw(self):
 		for bar in self.smart_bars:
 			self.canvas.create_rectangle(bar.id * self.scale * self.aspect_ratio,
-				  (MAX_HEIGHT - bar.height) * self.scale,
+				  (MAX_HEIGHT * 1.2 - bar.height) * self.scale,
 				  (bar.id + bar.width) * self.scale * self.aspect_ratio,
 				  MAX_HEIGHT * self.scale,
 				  fill = self.fill,
@@ -317,7 +317,11 @@ class AnalyzerContext:
 		self.process_file()
 		self.canvas.configure(width=ALPHABET*context.scale*context.aspect_ratio)
 		self.canvas.configure(height=MAX_HEIGHT*context.scale)
-		self.redraw_from_option()
+		if(self.file_path):
+			self.redraw_from_option()
+		else:
+			self.chart.flush()
+			self.demo()
 
 	def save_config(self):
 		global MAX_HEIGHT, ALPHABET
@@ -349,7 +353,7 @@ class AnalyzerContext:
 		self.smart_bars = data
 		self.draw_chart(data, self.scale, self.aspect_ratio)
 		# Add centered text
-		self.canvas.create_text((ALPHABET*self.scale*self.aspect_ratio)/2, (MAX_HEIGHT*self.scale)/2, font=("TkDefaultFont", self.scale*6), fill="white", text="EntropyVUE Demo")
+		self.canvas.create_text((ALPHABET*self.scale*self.aspect_ratio)/2, (MAX_HEIGHT*self.scale)/2, font=("TkDefaultFont", int(self.scale*6)), fill="white", text="EntropyVUE Demo")
 
 
 if __name__ == '__main__':
