@@ -38,11 +38,11 @@ class Chart:
 	def draw(self):
 		for bar in self.smart_bars:
 			self.canvas.create_rectangle(bar.id * self.scale * self.aspect_ratio,
-										  (MAX_HEIGHT - bar.height) * self.scale,
-										  (bar.id + bar.width) * self.scale * self.aspect_ratio,
-										  MAX_HEIGHT * self.scale,
-										  fill = self.fill,
-										  outline = self.outline)
+				  (MAX_HEIGHT - bar.height) * self.scale,
+				  (bar.id + bar.width) * self.scale * self.aspect_ratio,
+				  MAX_HEIGHT * self.scale,
+				  fill = self.fill,
+				  outline = self.outline)
 
 	def flush(self):
 		self.canvas.delete('all')
@@ -94,16 +94,16 @@ class FileResearchProcessor:
 		return entropy, dataset
 
 	def _calculate_shannon_entropy(self):
-		byte_frequencies = self.listing.copy()
+		alphabet_frequencies = self.listing.copy()
 
 		# Calculate total number of bytes
-		total_bytes = sum(byte_frequencies)
+		total_bytes = sum(alphabet_frequencies)
 
 		# Calculate entropy for each byte
 		dataset = []
 
-		# Iterate over each frequency in byte_frequencies
-		for freq in byte_frequencies:
+		# Iterate over each frequency in alphabet_frequencies
+		for freq in alphabet_frequencies:
 			# Check if the frequency is greater than 0
 			if freq > 0:
 				# Calculate the probability
@@ -121,17 +121,17 @@ class FileResearchProcessor:
 		return entropy, dataset
 
 	def _calculate_entropy_log2_shannon(self):
-		byte_frequencies = self.listing.copy()
-		total_bytes = sum(byte_frequencies)
+		alphabet_frequencies = self.listing.copy()
+		total_bytes = sum(alphabet_frequencies)
 
 		for b in range(ALPHABET):
-			byte_frequencies[b] = round(log2(byte_frequencies[b] + 1) * 100)
+			alphabet_frequencies[b] = round(log2(alphabet_frequencies[b] + 1) * 100)
 
 		# Calculate entropy for each byte
 		dataset = []
 
-		# Iterate over each frequency in byte_frequencies
-		for freq in byte_frequencies:
+		# Iterate over each frequency in alphabet_frequencies
+		for freq in alphabet_frequencies:
 			# Check if the frequency is greater than 0
 			if freq > 0:
 				# Calculate the probability
@@ -149,11 +149,11 @@ class FileResearchProcessor:
 		return entropy, dataset
 
 	def _calculate_entropy_log2_normalized(self):
-		a = self.listing.copy()
+		alphabet_frequencies = self.listing.copy()
 		dataset = [0]*ALPHABET
 
 		for b in range(ALPHABET):
-			dataset[b] = round(log2(a[b] + 1) * 100)
+			dataset[b] = round(log2(alphabet_frequencies[b] + 1) * 100)
 
 		# Normalize
 		c = 0
@@ -173,11 +173,11 @@ class FileResearchProcessor:
 		return entropy, dataset
 
 	def _calculate_entropy_log10_normalized(self):
-		a = self.listing.copy()
+		alphabet_frequencies = self.listing.copy()
 		dataset = [0]*ALPHABET
 
 		for b in range(ALPHABET):
-			dataset[b] = round(log10(a[b] + 1) * 100)
+			dataset[b] = round(log10(alphabet_frequencies[b] + 1) * 100)
 
 		# Normalize
 		c = 0
