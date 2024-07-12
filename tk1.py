@@ -16,6 +16,7 @@ import argparse
 
 ALPHABET = 256
 MAX_HEIGHT = 100
+MAX_HEIGHT_DESIGN_MUL = 1.00
 
 class SmartBar:
 	def __init__(self, id, height, width=1, scale=1):
@@ -38,7 +39,7 @@ class Chart:
 	def draw(self):
 		for bar in self.smart_bars:
 			self.canvas.create_rectangle(bar.id * self.scale * self.aspect_ratio,
-				  (MAX_HEIGHT * 1.2 - bar.height) * self.scale,
+				  (MAX_HEIGHT * MAX_HEIGHT_DESIGN_MUL - bar.height) * self.scale,
 				  (bar.id + bar.width) * self.scale * self.aspect_ratio,
 				  MAX_HEIGHT * self.scale,
 				  fill = self.fill,
