@@ -1,8 +1,8 @@
 # EntropyVUE
 
-EntropyVUE is a Python-based application that visualizes the entropy of a file. The user can see the spectre of entropy as well as the total entropy.
+EntropyVUE is a Python-based application that visualizes the entropy of a file. It uses Tkinter library for the GUI and requires no outside dependencies.
 
-![GUI](.\.img\gui.png)
+![GUI](.img/gui.png)
 
 ## Features
 
