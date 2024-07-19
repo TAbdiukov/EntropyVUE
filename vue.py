@@ -54,11 +54,11 @@ class FileResearchProcessor:
 		self.entropy_dict = {}
 
 	strategies = {
-		'normalised(in)': {"human_readable": "Normalized", 'func': '_calculate_normalized_entropy'},
-		'normalised[log2(in)]': {"human_readable": "Normalized of Log2", 'func': '_calculate_entropy_log2_normalized'},
-		'normalised[log10(in)]': {"human_readable": "Normalized of Log10", 'func': '_calculate_entropy_log10_normalized'},
-		'shannon(in)': {"human_readable": "Shannon", 'func': '_calculate_shannon_entropy'},
-		'shannon[log2(in)]': {"human_readable": "Shannon of Log2", 'func': '_calculate_entropy_log2_shannon'}
+		'normalised(in)': {"human_readable": "Normalised entropy of input", 'func': '_calculate_normalized_entropy'},
+		'normalised[log2(in)]': {"human_readable": "Normalised entropy of Log2 of input", 'func': '_calculate_entropy_log2_normalized'},
+		'normalised[log10(in)]': {"human_readable": "Normalised entropy of Log10 of input", 'func': '_calculate_entropy_log10_normalized'},
+		'shannon(in)': {"human_readable": "Shannon entropy of input", 'func': '_calculate_shannon_entropy'},
+		'shannon[log2(in)]': {"human_readable": "Shannon entropy of Log2 of input", 'func': '_calculate_entropy_log2_shannon'}
 	}
 
 	def process_file(self):
@@ -336,7 +336,7 @@ class AnalyzerContext:
 	def redraw_from_option(self):
 		if not self.file_path:
 			return
-		datapick = self.processor.entropy_dict[options.get(self.selected_option.get(),"normal")]
+		datapick = self.processor.entropy_dict[options.get(self.selected_option.get(),"normalised(in)")]
 		self.redraw(datapick)
 
 	def redraw(self, datapick):
@@ -369,13 +369,13 @@ if __name__ == '__main__':
 	context.label.pack()
 	context.canvas.bind("<Motion>", context.update_label)
 	context.canvas.pack()
-	context.status_bar = tk.Label(window, text="Please load a file", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+	context.status_bar = tk.Label(window, text="EntropyVUE by Tim Abdiukov. Please load a file", bd=1, relief=tk.SUNKEN, anchor=tk.W)
 	context.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 	button = tk.Button(window, text="Select File", command=context.open_file_interactive)
 	button.pack(side=tk.RIGHT)
 	options = FileResearchProcessor.map_human_readable_to_machine_strategies()
 	context.selected_option = tk.StringVar(window)
-	context.selected_option.set("Normalized")
+	context.selected_option.set("Normalised entropy of input")
 	config_button = tk.Button(window, text="Configure", command=context.configure)
 	config_button.pack(side=tk.RIGHT)
 	toggle_button = tk.Button(window, text="◐", command=context.toggle_mode)
