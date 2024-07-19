@@ -1,13 +1,13 @@
 # EntropyVUE
 
-EntropyVUE is a Python-based application that visualizes the entropy of a file. It uses Tkinter library for the GUI and requires no outside dependencies.
+EntropyVUE is a Python-based application that visualizes the entropy of a file. It uses Tkinter library for the GUI and requires no outside dependencies,
 
 ![GUI](.img/gui.png) |
 ---- | 
 
 ## Features
 
-- **Interactive Visualization** (vue): The application provides an interactive visualization of the entropy of the selected file against several entropy algorithms.
+- **Interactive Visualization** (*Vue*): The application provides an interactive visualization of the entropy of the selected file against several entropy algorithms.
 - **Cross-Platform**: EntropyVUE uses Python and Python Tkinter library for the GUI and requires no outside dependencies.
 - **Customizability**: Users can configure the `MAX_HEIGHT`, `ALPHABET`, and `Scale` parameters. The user may use `ALPHABET` values over the span of 1 byte.
 
