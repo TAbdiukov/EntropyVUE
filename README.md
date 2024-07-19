@@ -25,13 +25,14 @@ Alternatively, you can run the program from the command line with the `-f` or `-
 python vue.py -f /path/to/file
 ```
 
-## Discover EntropyVUE Interactivity
+## Discover EntropyVUE interactivity
 
-* How does a text file (such as this README) entropy look, compared to a ZIP archive?
-* How does a deflate ZIP archive file entropy look, compared to a highly compressed RAR or 7-zip archive file?
-* How does an MP3 file entropy look, compared to a WAV file?
+* What does the entropy of a text file (like this README) look like when compared to a ZIP archive?
+* How does the entropy of a deflate ZIP archive file compare to that of a compressed RAR or 7-zip archive file?
+* What's the difference in entropy between an MP3 file and a WAV file?
+* How does the entropy of a JPG file compare to that of a PNG file?
 
-[what other information can be derived from these readings?]
+What additional insights can be extracted from these entropy readings?
 
 -----------------------------------
 
