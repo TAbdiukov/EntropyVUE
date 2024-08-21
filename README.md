@@ -20,7 +20,7 @@ You can start the program by double-clicking on `vue.py`, or by passing `vue.py`
 python vue.py
 ```
 
-The program will start in "demo" mode, and you can specify a file to open using "Select File" button.
+The program will start in "demo" mode, and you can specify a file to open using the "Select File" button.
 
 Alternatively, you can run the program from the command line with the `-f` or `--file` option
 
