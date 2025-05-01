@@ -78,16 +78,16 @@ class FileResearchProcessor:
 			with open(self.filename, 'rb') as f:
 				chunk_size = 4096  # 4KB chunks
 				processed = 0
-				
+
 				while True:
 					chunk = f.read(chunk_size)
 					if not chunk:
 						break
-						
+
 					# Process chunk
 					for byte in chunk:
 						self.listing[byte] += 1
-					
+
 					# Update progress
 					processed += len(chunk)
 					if progress_callback:
@@ -311,21 +311,38 @@ class AnalyzerContext:
 		self.entropy_string = self.processor.entropies_to_short_string()
 		self.status_bar.config(text=f"Loaded file: {self.file_path}\n{self.entropy_string}")
 
-
 	def open_file(self):
-		if not self.file_path:
-			return
-
 		try:
-			self.process_file()
+			# Get file size for progress calc
+			total_size = os.path.getsize(self.file_path)
+
+			def progress_callback(percent):
+				# Update GUI thread-safe
+				self.status_bar.after(0, lambda:
+					self.status_bar.config(text=f"Loading {self.file_path}: {percent:.1f}%"))
+
+			# Create processor with callback of progress
+			self.processor = FileResearchProcessor(self.file_path)
+			self.processor.process_file(progress_callback=progress_callback)
+
+			# Finally
+			self.processor.calculate_all_entropy()
+			self.entropy_string = self.processor.entropies_to_short_string()
+
+			# Update UI when complete
+			self.status_bar.after(0, lambda:
+				self.status_bar.config(text=f"Loaded: {self.file_path}\n{self.entropy_string}"))
 			self.redraw_from_option()
+
 		except Exception as e:
-			self.status_bar.config(text=f"Error: {e}")
+			self.status_bar.after(0, lambda:
+				self.status_bar.config(text=f"Error: {str(e)}"))
 
 	def open_file_interactive(self):
 		self.file_path = filedialog.askopenfilename()
-		threading.Thread(target=self.open_file).start()
-
+		if self.file_path:
+			self.status_bar.config(text="Initializing...")
+			threading.Thread(target=self.open_file).start()
 
 	def configure(self):
 		window = tk.Toplevel()
