@@ -12,6 +12,8 @@ import random
 # Fast IO
 import mmap
 
+# IO and files
+import os
 import threading
 
 
@@ -64,19 +66,36 @@ class FileResearchProcessor:
 
 		self.entropy_dict = {}
 
-	def process_file(self):
+	def process_file(self, progress_callback=None):
+		self.listing = [0] * ALPHABET
 		try:
+			total_size = os.path.getsize(self.filename)
+			if total_size == 0:
+				if progress_callback:
+					progress_callback(100.0)
+				return
+
 			with open(self.filename, 'rb') as f:
-				mmapped_file = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-				n = ceil(ALPHABET / 256)
+				chunk_size = 4096  # 4KB chunks
+				processed = 0
+				
+				while True:
+					chunk = f.read(chunk_size)
+					if not chunk:
+						break
+						
+					# Process chunk
+					for byte in chunk:
+						self.listing[byte] += 1
+					
+					# Update progress
+					processed += len(chunk)
+					if progress_callback:
+						percent = (processed / total_size) * 100
+						progress_callback(min(percent, 100.0))
 
-				for i in range(0, len(mmapped_file), n):
-					buf = mmapped_file[i:i+n]
-					self.listing[int.from_bytes(buf) % ALPHABET] += 1
-
-				mmapped_file.close()
-		except IOError as e:
-			raise ValueError(f"Error reading file: {e}")
+		except Exception as e:
+			raise RuntimeError(f"File processing failed: {str(e)}")
 
 	def _calculate_normalized_entropy(self):
 		dataset = self.listing.copy()
@@ -303,6 +322,11 @@ class AnalyzerContext:
 		except Exception as e:
 			self.status_bar.config(text=f"Error: {e}")
 
+	def open_file_interactive(self):
+		self.file_path = filedialog.askopenfilename()
+		threading.Thread(target=self.open_file).start()
+
+
 	def configure(self):
 		window = tk.Toplevel()
 		window.title("Cfg")
@@ -341,10 +365,6 @@ class AnalyzerContext:
 		ALPHABET = int(self.alphabet_entry.get())
 		self.scale = float(self.scale_entry.get())
 		self.redraw_hard()
-
-	def open_file_interactive(self):
-		self.file_path = filedialog.askopenfilename()
-		threading.Thread(target=self.open_file).start()
 
 	def redraw_from_option(self):
 		if not self.file_path:
