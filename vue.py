@@ -16,7 +16,6 @@ import mmap
 import os
 import threading
 
-
 ALPHABET = 256
 MAX_HEIGHT = 100
 MAX_HEIGHT_DESIGN_MUL = 1.00
