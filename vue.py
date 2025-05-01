@@ -12,7 +12,7 @@ import random
 # Fast IO
 import mmap
 
-# IO and files
+# IO and file system
 import os
 import threading
 
