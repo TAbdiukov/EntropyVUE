@@ -253,7 +253,12 @@ class AnalyzerContext:
 		self.canvas = None
 		self.label = None
 		self.status_bar = None
+
+		self.button = None
 		self.selected_option = None
+		self.config_button = None
+		self.toggle_button = None
+		self.option_menu = None
 
 		self.scale = 3
 		self.aspect_ratio = 1
@@ -337,10 +342,15 @@ class AnalyzerContext:
 		except Exception as e:
 			self.status_bar.after(0, lambda:
 				self.status_bar.config(text=f"Error: {str(e)}"))
+		finally:
+			# Always re-enable button when done
+			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
 
 	def open_file_interactive(self):
 		self.file_path = filedialog.askopenfilename()
+
 		if self.file_path:
+			self.button.config(state=tk.DISABLED)  # Disable button
 			self.status_bar.config(text="Initializing...")
 			threading.Thread(target=self.open_file).start()
 
@@ -421,20 +431,21 @@ if __name__ == '__main__':
 	context.canvas.pack()
 	context.status_bar = tk.Label(window, text="EntropyVUE by Tim Abdiukov. Please load a file", bd=1, relief=tk.SUNKEN, anchor=tk.W)
 	context.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-	button = tk.Button(window, text="Select File", command=context.open_file_interactive)
-	button.pack(side=tk.RIGHT)
+	context.button = tk.Button(window, text="Select File", command=context.open_file_interactive)
+	context.button.pack(side=tk.RIGHT)
 	options = FileResearchProcessor.map_human_readable_to_machine_strategies()
 	context.selected_option = tk.StringVar(window)
 	context.selected_option.set("Normalised entropy of input")
-	config_button = tk.Button(window, text="Configure", command=context.configure)
-	config_button.pack(side=tk.RIGHT)
-	toggle_button = tk.Button(window, text="◐", command=context.toggle_mode)
-	toggle_button.pack(side=tk.RIGHT)
-	option_menu = tk.OptionMenu(window, context.selected_option, *options, command=lambda _: context.redraw_from_option())
-	option_menu.pack(side=tk.LEFT)
+	context.config_button = tk.Button(window, text="Configure", command=context.configure)
+	context.config_button.pack(side=tk.RIGHT)
+	context.toggle_button = tk.Button(window, text="◐", command=context.toggle_mode)
+	context.toggle_button.pack(side=tk.RIGHT)
+	context.option_menu = tk.OptionMenu(window, context.selected_option, *options, command=lambda _: context.redraw_from_option())
+	context.option_menu.pack(side=tk.LEFT)
 
 	if args.file_path:
 		context.file_path = args.file_path
-		context.open_file()
+		context.button.config(state=tk.DISABLED)  # Access through context
+		threading.Thread(target=context.open_file).start()
 
 	window.mainloop()
