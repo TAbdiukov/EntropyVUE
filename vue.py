@@ -12,6 +12,9 @@ import random
 # Fast IO
 import mmap
 
+import threading
+
+
 ALPHABET = 256
 MAX_HEIGHT = 100
 MAX_HEIGHT_DESIGN_MUL = 1.00
@@ -47,12 +50,6 @@ class Chart:
 		self.canvas.delete('all')
 
 class FileResearchProcessor:
-	def __init__(self, filename):
-		self.filename = filename
-		self.listing = [0]*ALPHABET
-
-		self.entropy_dict = {}
-
 	strategies = {
 		'normalised(in)': {"human_readable": "Normalised entropy of input", 'func': '_calculate_normalized_entropy'},
 		'normalised[log2(in)]': {"human_readable": "Normalised entropy of Log2 of input", 'func': '_calculate_entropy_log2_normalized'},
@@ -61,16 +58,25 @@ class FileResearchProcessor:
 		'shannon[log2(in)]': {"human_readable": "Shannon entropy of Log2 of input", 'func': '_calculate_entropy_log2_shannon'}
 	}
 
+	def __init__(self, filename):
+		self.filename = filename
+		self.listing = [0] * ALPHABET
+
+		self.entropy_dict = {}
+
 	def process_file(self):
-		with open(self.filename, 'rb') as f:
-			mmapped_file = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-			n = ceil(ALPHABET / 256)
+		try:
+			with open(self.filename, 'rb') as f:
+				mmapped_file = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+				n = ceil(ALPHABET / 256)
 
-			for i in range(0, len(mmapped_file), n):
-				buf = mmapped_file[i:i+n]
-				self.listing[int.from_bytes(buf) % ALPHABET] += 1
+				for i in range(0, len(mmapped_file), n):
+					buf = mmapped_file[i:i+n]
+					self.listing[int.from_bytes(buf) % ALPHABET] += 1
 
-			mmapped_file.close()
+				mmapped_file.close()
+		except IOError as e:
+			raise ValueError(f"Error reading file: {e}")
 
 	def _calculate_normalized_entropy(self):
 		dataset = self.listing.copy()
@@ -196,13 +202,16 @@ class FileResearchProcessor:
 		return entropy, dataset
 
 	def calculate_all_entropy(self):
-		for name, strategy in self.strategies.items():
-			entropy, dataset = getattr(self, strategy['func'])()
-			self.entropy_dict[name] = {
-				'human_readable': strategy['human_readable'],
-				'entropy': entropy,
-				'dataset': dataset
-			}
+		for name, strategy in FileResearchProcessor.strategies.items():
+			try:
+				entropy, dataset = getattr(self, strategy['func'])()
+				self.entropy_dict[name] = {
+					'human_readable': strategy['human_readable'],
+					'entropy': entropy,
+					'dataset': dataset
+				}
+			except Exception as e:
+				print(f"Error in {name}: {e}")
 
 	@classmethod
 	def map_human_readable_to_machine_strategies(cls):
@@ -287,8 +296,12 @@ class AnalyzerContext:
 	def open_file(self):
 		if not self.file_path:
 			return
-		self.process_file()
-		self.redraw_from_option()
+
+		try:
+			self.process_file()
+			self.redraw_from_option()
+		except Exception as e:
+			self.status_bar.config(text=f"Error: {e}")
 
 	def configure(self):
 		window = tk.Toplevel()
@@ -331,7 +344,7 @@ class AnalyzerContext:
 
 	def open_file_interactive(self):
 		self.file_path = filedialog.askopenfilename()
-		self.open_file()
+		threading.Thread(target=self.open_file).start()
 
 	def redraw_from_option(self):
 		if not self.file_path:
