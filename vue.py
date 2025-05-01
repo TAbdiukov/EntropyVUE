@@ -349,7 +349,7 @@ class AnalyzerContext:
 		self.file_path = filedialog.askopenfilename()
 
 		if self.file_path:
-			self.button.config(state=tk.DISABLED)  # Disable button
+			self.button.config(state=tk.DISABLED)
 			self.status_bar.config(text="Initializing...")
 			threading.Thread(target=self.open_file).start()
 
@@ -376,13 +376,15 @@ class AnalyzerContext:
 		tk.Button(window, text="Save", command=self.save_config).grid(row=3, columnspan=2)
 
 	def redraw_hard(self):
-		self.process_file()
-		self.canvas.configure(width=ALPHABET*context.scale*context.aspect_ratio)
-		self.canvas.configure(height=MAX_HEIGHT*context.scale)
-		if(self.file_path):
+		if self.file_path:
+			self.process_file()
+		self.canvas.configure(width=ALPHABET * self.scale * self.aspect_ratio,
+							  height=MAX_HEIGHT * self.scale)
+		if self.file_path:
 			self.redraw_from_option()
 		else:
-			self.chart.flush()
+			if self.chart:
+				self.chart.flush()
 			self.demo()
 
 	def save_config(self):
@@ -395,8 +397,10 @@ class AnalyzerContext:
 	def redraw_from_option(self):
 		if not self.file_path:
 			return
-		datapick = self.processor.entropy_dict[options.get(self.selected_option.get(),"normalised(in)")]
-		self.redraw(datapick)
+		strategy_name = FileResearchProcessor.map_human_readable_to_machine_strategies().get(self.selected_option.get(), "normalised(in)")
+		datapick = self.processor.entropy_dict.get(strategy_name, None)
+		if datapick:
+			self.redraw(datapick)
 
 	def redraw(self, datapick):
 		if not self.file_path:
@@ -427,6 +431,7 @@ if __name__ == '__main__':
 	context.label = tk.Label(window, text="")
 	context.label.pack()
 	context.canvas.bind("<Motion>", context.update_label)
+	context.canvas.bind("<Configure>", context.on_resize)
 	context.canvas.pack()
 	context.status_bar = tk.Label(window, text="EntropyVUE by Tim Abdiukov. Please load a file", bd=1, relief=tk.SUNKEN, anchor=tk.W)
 	context.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
