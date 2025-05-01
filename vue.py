@@ -431,7 +431,7 @@ if __name__ == '__main__':
 	context.label = tk.Label(window, text="")
 	context.label.pack()
 	context.canvas.bind("<Motion>", context.update_label)
-	context.canvas.bind("<Configure>", context.on_resize)
+
 	context.canvas.pack()
 	context.status_bar = tk.Label(window, text="EntropyVUE by Tim Abdiukov. Please load a file", bd=1, relief=tk.SUNKEN, anchor=tk.W)
 	context.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
