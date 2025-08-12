@@ -27,7 +27,7 @@ class SmartBar:
 
 class Chart:
 	def __init__(self, canvas, smart_bars, plot_height, fill="blue",
-				 outline="pink", padding=10, scale=1, aspect_ratio=1):
+				 outline="pink", padding=5, scale=1, aspect_ratio=1):
 		self.canvas = canvas
 		self.smart_bars = smart_bars
 		self.plot_height = plot_height
