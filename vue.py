@@ -29,9 +29,11 @@ class SmartBar:
 
 
 class Chart:
-	def __init__(self, canvas, smart_bars, fill="blue", outline="pink", padding=10, scale=1, aspect_ratio=1):
+	def __init__(self, canvas, smart_bars, plot_height, fill="blue",
+				 outline="pink", padding=10, scale=1, aspect_ratio=1):
 		self.canvas = canvas
 		self.smart_bars = smart_bars
+		self.plot_height = plot_height
 		self.padding = padding
 		self.fill = fill
 		self.outline = outline
@@ -39,22 +41,22 @@ class Chart:
 		self.aspect_ratio = aspect_ratio
 
 	def draw(self):
+		pad = self.padding
 		for bar in self.smart_bars:
-			self.canvas.create_rectangle(bar.id * self.scale * self.aspect_ratio,
-				  (MAX_HEIGHT * MAX_HEIGHT_DESIGN_MUL - bar.height) * self.scale,
-				  (bar.id + bar.width) * self.scale * self.aspect_ratio,
-				  MAX_HEIGHT * self.scale,
-				  fill = self.fill,
-				  outline = self.outline)
+			x0 = pad + bar.id * self.scale * self.aspect_ratio
+			y0 = (self.plot_height - bar.height) * self.scale
+			x1 = pad + (bar.id + bar.width) * self.scale * self.aspect_ratio
+			y1 = self.plot_height * self.scale
+			self.canvas.create_rectangle(x0, y0, x1, y1, fill=self.fill, outline=self.outline)
 
 	def flush(self):
 		self.canvas.delete('all')
 
 class FileResearchProcessor:
 	strategies = {
-		'normalised(in)': {"human_readable": "Normalised entropy of input", 'func': '_calculate_normalized_entropy'},
-		'normalised[log2(in)]': {"human_readable": "Normalised entropy of Log2 of input", 'func': '_calculate_entropy_log2_normalized'},
-		'normalised[log10(in)]': {"human_readable": "Normalised entropy of Log10 of input", 'func': '_calculate_entropy_log10_normalized'},
+		'normalized(in)': {"human_readable": "Normalized entropy of input", 'func': '_calculate_normalized_entropy'},
+		'normalized[log2(in)]': {"human_readable": "Normalized entropy of Log2 of input", 'func': '_calculate_entropy_log2_normalized'},
+		'normalized[log10(in)]': {"human_readable": "Normalized entropy of Log10 of input", 'func': '_calculate_entropy_log10_normalized'},
 		'shannon(in)': {"human_readable": "Shannon entropy of input", 'func': '_calculate_shannon_entropy'},
 		'shannon[log2(in)]': {"human_readable": "Shannon entropy of Log2 of input", 'func': '_calculate_entropy_log2_shannon'}
 	}
@@ -75,7 +77,7 @@ class FileResearchProcessor:
 				return
 
 			with open(self.filename, 'rb') as f:
-				chunk_size = 4096  # 4KB chunks
+				chunk_size= 1 << 22  # 4MB chunks
 				processed = 0
 
 				while True:
@@ -144,31 +146,15 @@ class FileResearchProcessor:
 		return entropy, dataset
 
 	def _calculate_entropy_log2_shannon(self):
-		alphabet_frequencies = self.listing.copy()
-		total_bytes = sum(alphabet_frequencies)
-
-		for b in range(ALPHABET):
-			alphabet_frequencies[b] = round(log2(alphabet_frequencies[b] + 1) * 100)
-
-		# Calculate entropy for each byte
+		counts = [log2(c + 1) for c in self.listing]
+		total = sum(counts)
+		if total == 0:
+			return 0.0, [0.0] * ALPHABET
 		dataset = []
-
-		# Iterate over each frequency in alphabet_frequencies
-		for freq in alphabet_frequencies:
-			# Check if the frequency is greater than 0
-			if freq > 0:
-				# Calculate the probability
-				prob = freq / total_bytes
-				# Calculate the value and append it to the dataset
-				value = -prob * log2(prob) * 100
-				dataset.append(value)
-			else:
-				# If the frequency is not greater than 0, append 0 to the dataset
-				dataset.append(0)
-
-		# Calculate overall entropy
-		entropy = sum(dataset)/100
-
+		for c in counts:
+			p = c / total
+			dataset.append(-p * log2(p) * 100 if p > 0 else 0.0)
+		entropy = sum(dataset) / 100
 		return entropy, dataset
 
 	def _calculate_entropy_log2_normalized(self):
@@ -286,21 +272,18 @@ class AnalyzerContext:
 		self.redraw_from_option()
 
 	def draw_chart(self, data, scale=1, aspect_ratio=1, flush=False):
-		smart_bars = []
-		for i in range(ALPHABET):
-			#print(str(data[i]))
-			bar = SmartBar(i, data[i], scale=scale)
-			smart_bars.append(bar)
+		smart_bars = [SmartBar(i, h, scale=scale) for i, h in enumerate(data)]
 		if flush and self.chart:
 			self.chart.flush()
-		self.chart = Chart(self.canvas, smart_bars, scale=scale, aspect_ratio=aspect_ratio,
-			fill=self.color_bars_fill, outline=self.color_bars_outline)
+		self.chart = Chart(self.canvas, smart_bars, plot_height=MAX_HEIGHT,
+						   scale=scale, aspect_ratio=aspect_ratio,
+						   fill=self.color_bars_fill, outline=self.color_bars_outline)
 		self.chart.draw()
-
+	
 	def update_label(self, event):
 		try:
 			bar = self.chart.smart_bars[int(event.x // (self.scale * self.aspect_ratio))]
-			display_id = hex(bar.id).zfill(2) + " ("+str(bar.id).zfill(2)+")"
+			display_id = f"0x{bar.id:02X} ({bar.id:03d})"
 			display_height = round(bar.height, 2)
 			self.label.config(text=f"Byte: {display_id}, Height: {display_height}")
 		except IndexError as e:
@@ -317,32 +300,26 @@ class AnalyzerContext:
 
 	def open_file(self):
 		try:
-			# Get file size for progress calc
 			total_size = os.path.getsize(self.file_path)
 
 			def progress_callback(percent):
-				# Update GUI thread-safe
 				self.status_bar.after(0, lambda:
 					self.status_bar.config(text=f"Loading {self.file_path}: {percent:.1f}%"))
 
-			# Create processor with callback of progress
 			self.processor = FileResearchProcessor(self.file_path)
 			self.processor.process_file(progress_callback=progress_callback)
-
-			# Finally
 			self.processor.calculate_all_entropy()
 			self.entropy_string = self.processor.entropies_to_short_string()
 
-			# Update UI when complete
+			# UI updates on main thread only
 			self.status_bar.after(0, lambda:
 				self.status_bar.config(text=f"Loaded: {self.file_path}\n{self.entropy_string}"))
-			self.redraw_from_option()
+			self.canvas.after(0, self.redraw_from_option)
 
 		except Exception as e:
 			self.status_bar.after(0, lambda:
 				self.status_bar.config(text=f"Error: {str(e)}"))
 		finally:
-			# Always re-enable button when done
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
 
 	def open_file_interactive(self):
@@ -394,13 +371,28 @@ class AnalyzerContext:
 		self.scale = float(self.scale_entry.get())
 		self.redraw_hard()
 
-	def redraw_from_option(self):
-		if not self.file_path:
-			return
-		strategy_name = FileResearchProcessor.map_human_readable_to_machine_strategies().get(self.selected_option.get(), "normalised(in)")
-		datapick = self.processor.entropy_dict.get(strategy_name, None)
-		if datapick:
-			self.redraw(datapick)
+		def _to_canvas(self, values):
+			# values is any list of non-negative floats
+			return self._scale_to_height(values, MAX_HEIGHT)
+
+		def redraw_from_option(self):
+			if not self.file_path or not self.processor:
+				return
+			key = FileResearchProcessor.map_human_readable_to_machine_strategies() \
+					  .get(self.selected_option.get(), "normalized(in)")
+			datapick = self.processor.entropy_dict.get(key)
+			if not datapick:
+				return
+			heights = self._to_canvas(datapick['dataset'])
+			self.redraw_with_heights(heights)
+
+		def redraw_with_heights(self, heights):
+			self.draw_chart(heights, self.scale, self.aspect_ratio, flush=True)
+
+	@staticmethod
+	def _scale_to_height(self, values, height):
+		m = max(values) or 1.0
+		return [(v / m) * height for v in values]
 
 	def redraw(self, datapick):
 		if not self.file_path:
@@ -439,7 +431,7 @@ if __name__ == '__main__':
 	context.button.pack(side=tk.RIGHT)
 	options = FileResearchProcessor.map_human_readable_to_machine_strategies()
 	context.selected_option = tk.StringVar(window)
-	context.selected_option.set("Normalised entropy of input")
+	context.selected_option.set("Normalized entropy of input")
 	context.config_button = tk.Button(window, text="Configure", command=context.configure)
 	context.config_button.pack(side=tk.RIGHT)
 	context.toggle_button = tk.Button(window, text="◐", command=context.toggle_mode)
