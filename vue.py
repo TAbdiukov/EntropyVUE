@@ -184,11 +184,13 @@ class FileResearchProcessor:
 		return {strategy['human_readable']: name for name, strategy in cls.strategies.items()}
 
 	def entropies_to_short_string(self):
-		entropy_str = ""
-		for entropy_type, entropy_data in self.entropy_dict.items():
-			entropy_value = round(entropy_data['entropy'], 2)
-			entropy_str += f"Entropy type: {entropy_type}, Entropy: {entropy_value}%\n"
-		return entropy_str
+		lines = []
+		for key, d in self.entropy_dict.items():
+			label = d['human_readable']
+			unit = "bits/byte" if key.startswith("shannon") else "%"
+			val = round(d['entropy'], 2)
+			lines.append(f"{label}: {val} {unit}")
+		return "\n".join(lines)
 
 class AnalyzerContext:
 	def __init__(self):
@@ -324,15 +326,15 @@ class AnalyzerContext:
 		tk.Button(window, text="Save", command=self.save_config).grid(row=3, columnspan=2)
 
 	def redraw_hard(self):
+		self.canvas.configure(
+			width=10*2 + ALPHABET*self.scale*self.aspect_ratio,
+			height=10*2 + MAX_HEIGHT*self.scale
+		)
 		if self.file_path:
-			self.process_file()
-		self.canvas.configure(width=ALPHABET * self.scale * self.aspect_ratio,
-							  height=MAX_HEIGHT * self.scale)
-		if self.file_path:
-			self.redraw_from_option()
+			self.button.config(state=tk.DISABLED)
+			threading.Thread(target=self.open_file, daemon=True).start()
 		else:
-			if self.chart:
-				self.chart.flush()
+			if self.chart: self.chart.flush()
 			self.demo()
 
 	def save_config(self):
