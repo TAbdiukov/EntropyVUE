@@ -86,8 +86,13 @@ class FileResearchProcessor:
 						break
 
 					# Process chunk
+					N = len(self.listing)  # == ALPHABET
+					if N <= 0:
+						raise ValueError("ALPHABET must be at least 1")
+
 					for byte in chunk:
-						self.listing[byte] += 1
+						idx = (byte * N) // 256  # map 0..255 -> 0..N-1
+						self.listing[idx] += 1
 
 					# Update progress
 					processed += len(chunk)
@@ -101,21 +106,11 @@ class FileResearchProcessor:
 	def _calculate_normalized_entropy(self):
 		dataset = self.listing.copy()
 
-		# Normalize
-		c = 0
-		entropy = 0
-		for b in range(ALPHABET):
-			c = max(c, dataset[b])
+		c = max(dataset) if dataset else 1
 		c = 1 if c == 0 else c
 
-		for b in range(ALPHABET):
-			dataset[b] = round(dataset[b] / c * 100)
-
-		for b in range(ALPHABET):
-			entropy += dataset[b]
-
-		entropy = round(entropy / ALPHABET, 2)
-
+		dataset = [round(v / c * 100) for v in dataset]
+		entropy = round(sum(dataset) / (len(dataset) or 1), 2)
 		return entropy, dataset
 
 	def _calculate_shannon_entropy(self):
@@ -149,60 +144,30 @@ class FileResearchProcessor:
 		counts = [log2(c + 1) for c in self.listing]
 		total = sum(counts)
 		if total == 0:
-			return 0.0, [0.0] * ALPHABET
+			return 0.0, [0.0] * len(counts)
+
 		dataset = []
 		for c in counts:
 			p = c / total
 			dataset.append(-p * log2(p) * 100 if p > 0 else 0.0)
+
 		entropy = sum(dataset) / 100
 		return entropy, dataset
 
 	def _calculate_entropy_log2_normalized(self):
-		alphabet_frequencies = self.listing.copy()
-		dataset = [0]*ALPHABET
-
-		for b in range(ALPHABET):
-			dataset[b] = round(log2(alphabet_frequencies[b] + 1) * 100)
-
-		# Normalize
-		c = 0
-		entropy = 0
-		for b in range(ALPHABET):
-			c = max(c, dataset[b])
-		c = 1 if c == 0 else c
-
-		for b in range(ALPHABET):
-			dataset[b] = dataset[b] / c * 100
-
-		for b in range(ALPHABET):
-			entropy += dataset[b]
-
-		entropy = entropy / ALPHABET
-
+		freqs = self.listing.copy()
+		dataset = [round(log2(v + 1) * 100) for v in freqs]
+		c = max(dataset) or 1
+		dataset = [d / c * 100 for d in dataset]
+		entropy = sum(dataset) / (len(dataset) or 1)
 		return entropy, dataset
 
 	def _calculate_entropy_log10_normalized(self):
-		alphabet_frequencies = self.listing.copy()
-		dataset = [0]*ALPHABET
-
-		for b in range(ALPHABET):
-			dataset[b] = round(log10(alphabet_frequencies[b] + 1) * 100)
-
-		# Normalize
-		c = 0
-		entropy = 0
-		for b in range(ALPHABET):
-			c = max(c, dataset[b])
-		c = 1 if c == 0 else c
-
-		for b in range(ALPHABET):
-			dataset[b] = dataset[b] / c * 100
-
-		for b in range(ALPHABET):
-			entropy += dataset[b]
-
-		entropy = entropy / ALPHABET
-
+		freqs = self.listing.copy()
+		dataset = [round(log10(v + 1) * 100) for v in freqs]
+		c = max(dataset) or 1
+		dataset = [d / c * 100 for d in dataset]
+		entropy = sum(dataset) / (len(dataset) or 1)
 		return entropy, dataset
 
 	def calculate_all_entropy(self):
