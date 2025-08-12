@@ -112,7 +112,8 @@ class FileResearchProcessor:
 			with open(self.filename, 'rb') as f:
 				while True:
 					data = f.read(chunk_size)
-					if not data and not leftover:
+					if not data:
+						leftover = b""
 						break
 
 					buf = leftover + (data or b"")
@@ -336,9 +337,8 @@ class AnalyzerContext:
 			self.canvas.after(0, self.redraw_from_option)
 
 		except Exception as e:
-			raise
 			self.status_bar.after(0, lambda:
-				self.status_bar.config(text=f"Error: {str(e)}"))
+			self.status_bar.config(text=f"Error: {e}"))
 		finally:
 			# Always re-enable button when done
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
@@ -349,7 +349,7 @@ class AnalyzerContext:
 		if self.file_path:
 			self.button.config(state=tk.DISABLED)
 			self.status_bar.config(text="Initializing...")
-			threading.Thread(target=self.open_file).start()
+			threading.Thread(target=self.open_file, daemon=True).start()
 
 	def configure(self):
 		window = tk.Toplevel()
@@ -469,6 +469,6 @@ if __name__ == '__main__':
 	if args.file_path:
 		context.file_path = args.file_path
 		context.button.config(state=tk.DISABLED)  # Access through context
-		threading.Thread(target=context.open_file).start()
+		threading.Thread(target=context.open_file, daemon=True).start()
 
 	window.mainloop()
