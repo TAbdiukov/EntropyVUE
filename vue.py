@@ -64,8 +64,31 @@ class FileResearchProcessor:
 
 		self.entropy_dict = {}
 
+	def _bytes_needed_for_alphabet(self, N: int) -> int:
+		"""
+		Returns the smallest k such that 256**k >= N and k >= 1.
+		For ALPHABET=70000 this returns 3, as requested.
+		"""
+		k = 1
+		base = 256
+		while base ** k < N:
+			k += 1
+		return k
+
 	def process_file(self, progress_callback=None):
-		self.listing = [0] * ALPHABET
+		"""
+		Populate self.listing by mapping the file's content into ALPHABET bins.
+		- If ALPHABET <= 256: count single bytes mapped proportionally (compatible with previous logic).
+		- If ALPHABET  > 256: read non-overlapping k-byte blocks (k = bytes needed so 256**k >= ALPHABET),
+		  interpret each block as a big-endian integer in [0, 256**k - 1], and map proportionally:
+			  idx = (value * ALPHABET) // (256**k)
+		"""
+		N = len(self.listing)
+		if N <= 0:
+			raise ValueError("ALPHABET must be at least 1")
+
+		self.listing = [0] * N  # reset counts
+
 		try:
 			total_size = os.path.getsize(self.filename)
 			if total_size == 0:
@@ -73,29 +96,49 @@ class FileResearchProcessor:
 					progress_callback(100.0)
 				return
 
-			with open(self.filename, 'rb') as f:
-				chunk_size= 1 << 22  # 4MB chunks
-				processed = 0
+			k = self._bytes_needed_for_alphabet(N)
+			base_pow_k = 256 ** k
 
+			# Choose a chunk size that is a multiple of k to minimize leftovers.
+			# Keep it large for throughput but not too large for memory.
+			raw_chunk_size = 1 << 22  # ~4MB before alignment
+			chunk_size = (raw_chunk_size // k) * k
+			if chunk_size == 0:
+				chunk_size = k  # fallback
+
+			processed = 0
+			leftover = b""
+
+			with open(self.filename, 'rb') as f:
 				while True:
-					chunk = f.read(chunk_size)
-					if not chunk:
+					data = f.read(chunk_size)
+					if not data and not leftover:
 						break
 
-					# Process chunk
-					N = len(self.listing)  # == ALPHABET
-					if N <= 0:
-						raise ValueError("ALPHABET must be at least 1")
+					buf = leftover + (data or b"")
+					# How many full k-byte blocks do we have?
+					usable_len = (len(buf) // k) * k
+					blocks = buf[:usable_len]
+					leftover = buf[usable_len:]  # carry incomplete tail to next loop
 
-					for byte in chunk:
-						idx = (byte * N) // 256  # map 0..255 -> 0..N-1
+					# Process blocks in big-endian order
+					# Each k-byte block -> value in [0, 256**k - 1]
+					for i in range(0, len(blocks), k):
+						value = int.from_bytes(blocks[i:i+k], 'big', signed=False)
+						idx = (value * N) // base_pow_k
+						# idx is guaranteed 0..N-1
 						self.listing[idx] += 1
 
-					# Update progress
-					processed += len(chunk)
-					if progress_callback:
+					# Progress counts bytes actually read from disk this iteration
+					processed += len(data or b"")
+					if progress_callback and total_size > 0:
 						percent = (processed / total_size) * 100
 						progress_callback(min(percent, 100.0))
+
+				# Done reading. We intentionally ignore any final leftover < k bytes
+				# because we can't form a full symbol out of them.
+				if progress_callback:
+					progress_callback(100.0)
 
 		except Exception as e:
 			raise RuntimeError(f"File processing failed: {str(e)}")
@@ -254,7 +297,11 @@ class AnalyzerContext:
 			self.label.config(text="")
 			return
 		bar = self.chart.smart_bars[idx]
-		hex_width = 2 if len(self.chart.smart_bars) <= 256 else 4
+
+		# Dynamic hex width for arbitrary alphabet sizes (>= 2 digits)
+		max_id = max(1, len(self.chart.smart_bars) - 1)
+		hex_width = max(2, (max_id.bit_length() + 3) // 4)
+
 		self.label.config(
 			text=f"Symbol: 0x{bar.id:0{hex_width}X} ({bar.id}), Height: {bar.height:.2f}"
 		)
@@ -289,6 +336,7 @@ class AnalyzerContext:
 			self.canvas.after(0, self.redraw_from_option)
 
 		except Exception as e:
+			raise
 			self.status_bar.after(0, lambda:
 				self.status_bar.config(text=f"Error: {str(e)}"))
 		finally:
