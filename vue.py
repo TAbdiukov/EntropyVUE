@@ -145,41 +145,22 @@ class FileResearchProcessor:
 			raise RuntimeError(f"File processing failed: {str(e)}")
 
 	def _calculate_normalized_entropy(self):
-		dataset = self.listing.copy()
-
-		c = max(dataset) if dataset else 1
-		c = 1 if c == 0 else c
-
-		dataset = [round(v / c * 100) for v in dataset]
-		entropy = round(sum(dataset) / (len(dataset) or 1), 2)
+		freqs = self.listing
+		c = max(freqs) or 1
+		dataset = [(v / c) * 100.0 for v in freqs]
+		entropy = sum(dataset) / (len(dataset) or 1)
 		return entropy, dataset
 
 	def _calculate_shannon_entropy(self):
-		alphabet_frequencies = self.listing.copy()
-
-		# Calculate total number of bytes
-		total_bytes = sum(alphabet_frequencies)
-
-		# Calculate entropy for each byte
-		dataset = []
-
-		# Iterate over each frequency in alphabet_frequencies
-		for freq in alphabet_frequencies:
-			# Check if the frequency is greater than 0
-			if freq > 0:
-				# Calculate the probability
-				prob = freq / total_bytes
-				# Calculate the value and append it to the dataset
-				value = -prob * log2(prob) * 100
-				dataset.append(value)
-			else:
-				# If the frequency is not greater than 0, append 0 to the dataset
-				dataset.append(0)
-
-		# Calculate overall entropy
-		entropy = sum(dataset)/100
-
-		return entropy, dataset
+		counts = self.listing
+		total = sum(counts)
+		if total == 0:
+			return 0.0, [0.0] * len(counts)
+		probs = [c / total for c in counts]
+		per_symbol = [(-p * log2(p)) if p > 0 else 0.0 for p in probs]
+		H = sum(per_symbol)                       # bits/symbol
+		H_norm = H / log2(len(counts)) if len(counts) > 1 else 0.0
+		return H, per_symbol  # chart will scale; show H or H_norm in the status text
 
 	def _calculate_entropy_log2_shannon(self):
 		counts = [log2(c + 1) for c in self.listing]
@@ -231,7 +212,7 @@ class FileResearchProcessor:
 		lines = []
 		for key, d in self.entropy_dict.items():
 			label = d['human_readable']
-			unit = "bits/byte" if key.startswith("shannon") else "%"
+			unit = "bits/symbol" if key.startswith("shannon") else "%"
 			val = round(d['entropy'], 2)
 			lines.append(f"{label}: {val} {unit}")
 		return "\n".join(lines)
@@ -337,8 +318,9 @@ class AnalyzerContext:
 			self.canvas.after(0, self.redraw_from_option)
 
 		except Exception as e:
+			str_err = str(e)
 			self.status_bar.after(0, lambda:
-			self.status_bar.config(text=f"Error: {e}"))
+			self.status_bar.config(text=f"Error: {str_err}"))
 		finally:
 			# Always re-enable button when done
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
