@@ -3,7 +3,6 @@
 
 import tkinter as tk
 from tkinter import filedialog
-from tkinter import simpledialog
 
 import argparse
 from math import log2, log10, ceil
@@ -13,17 +12,18 @@ import random
 import os
 import threading
 
+# for less overhead, fewer attributes, clearer intent
+from dataclasses import dataclass
+
 ALPHABET = 256
 MAX_HEIGHT = 100
-MAX_HEIGHT_DESIGN_MUL = 1.00
 
+@dataclass(slots=True)
 class SmartBar:
-	def __init__(self, id, height, width=1, scale=1):
-		self.id = id
-		self.height = height
-		self.width = width
-		self.scale = scale
-
+	id: int
+	height: float
+	width: int = 1
+	scale: float = 1.0
 
 class Chart:
 	def __init__(self, canvas, smart_bars, plot_height, fill="blue",
@@ -243,13 +243,19 @@ class AnalyzerContext:
 		self.chart.draw()
 
 	def update_label(self, event):
-		try:
-			bar = self.chart.smart_bars[int(event.x // (self.scale * self.aspect_ratio))]
-			display_id = f"0x{bar.id:02X} ({bar.id:03d})"
-			display_height = round(bar.height, 2)
-			self.label.config(text=f"Byte: {display_id}, Height: {display_height}")
-		except IndexError as e:
-			pass
+		if not self.chart:
+			return
+		pad = self.chart.padding
+		bar_w = self.scale * self.aspect_ratio
+		idx = int((event.x - pad) // bar_w)
+		if idx < 0 or idx >= len(self.chart.smart_bars):
+			self.label.config(text="")
+			return
+		bar = self.chart.smart_bars[idx]
+		hex_width = 2 if len(self.chart.smart_bars) <= 256 else 4
+		self.label.config(
+			text=f"Symbol: 0x{bar.id:0{hex_width}X} ({bar.id}), Height: {bar.height:.2f}"
+		)
 
 	def process_file(self):
 		if not self.file_path:
@@ -262,9 +268,6 @@ class AnalyzerContext:
 
 	def open_file(self):
 		try:
-			# Get file size for progress calc
-			total_size = os.path.getsize(self.file_path)
-
 			def progress_callback(percent):
 				# Update GUI thread-safe
 				self.status_bar.after(0, lambda:
@@ -334,9 +337,15 @@ class AnalyzerContext:
 
 	def save_config(self):
 		global MAX_HEIGHT, ALPHABET
-		MAX_HEIGHT = int(self.max_height_entry.get())
-		ALPHABET = int(self.alphabet_entry.get())
-		self.scale = float(self.scale_entry.get())
+		mh = int(self.max_height_entry.get())
+		ab = int(self.alphabet_entry.get())
+		sc = float(self.scale_entry.get())
+
+		if mh <= 0: raise ValueError("MAX_HEIGHT must be > 0")
+		if ab <= 0: raise ValueError("ALPHABET must be > 0")
+		if sc <= 0: raise ValueError("Scale must be > 0")
+
+		MAX_HEIGHT, ALPHABET, self.scale = mh, ab, sc
 		self.redraw_hard()
 
 	def _to_canvas(self, values):
@@ -344,7 +353,7 @@ class AnalyzerContext:
 		return AnalyzerContext._scale_to_height(values, MAX_HEIGHT)
 
 	def redraw_from_option(self):
-		if not self.file_path or not self.processor:
+		if not (self.file_path and self.processor and self.processor.entropy_dict):
 			return
 		key = FileResearchProcessor.map_human_readable_to_machine_strategies() \
 				  .get(self.selected_option.get(), "normalized(in)")
