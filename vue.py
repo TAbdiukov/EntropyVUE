@@ -279,7 +279,7 @@ class AnalyzerContext:
 						   scale=scale, aspect_ratio=aspect_ratio,
 						   fill=self.color_bars_fill, outline=self.color_bars_outline)
 		self.chart.draw()
-	
+
 	def update_label(self, event):
 		try:
 			bar = self.chart.smart_bars[int(event.x // (self.scale * self.aspect_ratio))]
@@ -300,18 +300,23 @@ class AnalyzerContext:
 
 	def open_file(self):
 		try:
+			# Get file size for progress calc
 			total_size = os.path.getsize(self.file_path)
 
 			def progress_callback(percent):
+				# Update GUI thread-safe
 				self.status_bar.after(0, lambda:
 					self.status_bar.config(text=f"Loading {self.file_path}: {percent:.1f}%"))
 
+			# Create processor with callback of progress
 			self.processor = FileResearchProcessor(self.file_path)
 			self.processor.process_file(progress_callback=progress_callback)
+
+			# Finally
 			self.processor.calculate_all_entropy()
 			self.entropy_string = self.processor.entropies_to_short_string()
 
-			# UI updates on main thread only
+			# Update UI when complete
 			self.status_bar.after(0, lambda:
 				self.status_bar.config(text=f"Loaded: {self.file_path}\n{self.entropy_string}"))
 			self.canvas.after(0, self.redraw_from_option)
@@ -320,6 +325,7 @@ class AnalyzerContext:
 			self.status_bar.after(0, lambda:
 				self.status_bar.config(text=f"Error: {str(e)}"))
 		finally:
+			# Always re-enable button when done
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
 
 	def open_file_interactive(self):
@@ -371,26 +377,26 @@ class AnalyzerContext:
 		self.scale = float(self.scale_entry.get())
 		self.redraw_hard()
 
-		def _to_canvas(self, values):
-			# values is any list of non-negative floats
-			return self._scale_to_height(values, MAX_HEIGHT)
+	def _to_canvas(self, values):
+		# values is any list of non-negative floats
+		return AnalyzerContext._scale_to_height(values, MAX_HEIGHT)
 
-		def redraw_from_option(self):
-			if not self.file_path or not self.processor:
-				return
-			key = FileResearchProcessor.map_human_readable_to_machine_strategies() \
-					  .get(self.selected_option.get(), "normalized(in)")
-			datapick = self.processor.entropy_dict.get(key)
-			if not datapick:
-				return
-			heights = self._to_canvas(datapick['dataset'])
-			self.redraw_with_heights(heights)
+	def redraw_from_option(self):
+		if not self.file_path or not self.processor:
+			return
+		key = FileResearchProcessor.map_human_readable_to_machine_strategies() \
+				  .get(self.selected_option.get(), "normalized(in)")
+		datapick = self.processor.entropy_dict.get(key)
+		if not datapick:
+			return
+		heights = self._to_canvas(datapick['dataset'])
+		self.redraw_with_heights(heights)
 
-		def redraw_with_heights(self, heights):
-			self.draw_chart(heights, self.scale, self.aspect_ratio, flush=True)
+	def redraw_with_heights(self, heights):
+		self.draw_chart(heights, self.scale, self.aspect_ratio, flush=True)
 
 	@staticmethod
-	def _scale_to_height(self, values, height):
+	def _scale_to_height(values, height):
 		m = max(values) or 1.0
 		return [(v / m) * height for v in values]
 
