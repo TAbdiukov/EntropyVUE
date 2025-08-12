@@ -9,9 +9,6 @@ import argparse
 from math import log2, log10, ceil
 import random
 
-# Fast IO
-import mmap
-
 # IO and file system
 import os
 import threading
