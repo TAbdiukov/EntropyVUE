@@ -319,8 +319,7 @@ class AnalyzerContext:
 
 		except Exception as e:
 			str_err = str(e)
-			self.status_bar.after(0, lambda:
-			self.status_bar.config(text=f"Error: {str_err}"))
+			self.status_bar.after(0, lambda: self.status_bar.config(text=f"Error: {str_err}"))
 		finally:
 			# Always re-enable button when done
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
