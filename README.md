@@ -1,8 +1,9 @@
 # EntropyVUE
 
-EntropyVUE is a Python application that visualises file content as symbol-count profiles and Shannon entropy. It gives a compact view of distribution shape, density, and high-entropy regions in a file.
+Visualise the structure and entropy of files.
 
-EntropyVUE uses the standard-library Tkinter GUI toolkit and has no third-party dependencies. Python 3.10 or newer is required.
+It uses Tkinter, has no third-party dependencies, and requires Python 3.10 or newer.
+
 
 ![GUI](.img/gui.png) |
 ---- | 
