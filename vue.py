@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 import argparse
+from collections import Counter
 from math import log2, log10, ceil
 import random
 
@@ -51,9 +52,9 @@ class Chart:
 
 class FileResearchProcessor:
 	strategies = {
-		'normalized(in)': {"human_readable": "Normalized entropy of input", 'func': '_calculate_normalized_entropy'},
-		'normalized[log2(in)]': {"human_readable": "Normalized entropy of Log2 of input", 'func': '_calculate_entropy_log2_normalized'},
-		'normalized[log10(in)]': {"human_readable": "Normalized entropy of Log10 of input", 'func': '_calculate_entropy_log10_normalized'},
+		'normalized(in)': {"human_readable": "Normalised symbol-count profile", 'func': '_calculate_normalized_entropy'},
+		'normalized[log2(in)]': {"human_readable": "Normalised log2 count profile", 'func': '_calculate_entropy_log2_normalized'},
+		'normalized[log10(in)]': {"human_readable": "Normalised log10 count profile", 'func': '_calculate_entropy_log10_normalized'},
 		'shannon(in)': {"human_readable": "Shannon entropy of input", 'func': '_calculate_shannon_entropy'},
 		'shannon[log2(in)]': {"human_readable": "Shannon entropy of Log2 of input", 'func': '_calculate_entropy_log2_shannon'}
 	}
@@ -78,7 +79,7 @@ class FileResearchProcessor:
 	def process_file(self, progress_callback=None):
 		"""
 		Populate self.listing by mapping the file's content into ALPHABET bins.
-		- If ALPHABET <= 256: count single bytes mapped proportionally (compatible with previous logic).
+		- If ALPHABET <= 256: count single bytes mapped proportionally into ALPHABET bins.
 		- If ALPHABET  > 256: read non-overlapping k-byte blocks (k = bytes needed so 256**k >= ALPHABET),
 		  interpret each block as a big-endian integer in [0, 256**k - 1], and map proportionally:
 			  idx = (value * ALPHABET) // (256**k)
@@ -98,6 +99,7 @@ class FileResearchProcessor:
 
 			k = self._bytes_needed_for_alphabet(N)
 			base_pow_k = 256 ** k
+			byte_to_bin = [(b * N) // 256 for b in range(256)] if k == 1 else None
 
 			# Choose a chunk size that is a multiple of k to minimize leftovers.
 			# Keep it large for throughput but not too large for memory.
@@ -122,13 +124,17 @@ class FileResearchProcessor:
 					blocks = buf[:usable_len]
 					leftover = buf[usable_len:]  # carry incomplete tail to next loop
 
-					# Process blocks in big-endian order
-					# Each k-byte block -> value in [0, 256**k - 1]
-					for i in range(0, len(blocks), k):
-						value = int.from_bytes(blocks[i:i+k], 'big', signed=False)
-						idx = (value * N) // base_pow_k
-						# idx is guaranteed 0..N-1
-						self.listing[idx] += 1
+					# Process complete symbols. Keep the common byte case fast;
+					# slicing and int.from_bytes per byte is expensive for large files.
+					if k == 1:
+						for byte, count in Counter(blocks).items():
+							self.listing[byte_to_bin[byte]] += count
+					else:
+						for i in range(0, len(blocks), k):
+							value = int.from_bytes(blocks[i:i+k], 'big', signed=False)
+							idx = (value * N) // base_pow_k
+							# idx is guaranteed 0..N-1
+							self.listing[idx] += 1
 
 					# Progress counts bytes actually read from disk this iteration
 					processed += len(data or b"")
@@ -238,27 +244,34 @@ class AnalyzerContext:
 		self.aspect_ratio = 1
 
 		self.dark_mode = True
-		self.color_bg = "black"
-		self.color_bars_fill = "red"
-		self.color_bars_outline = "green"
+		self._apply_mode_palette()
 
 	def on_resize(self, event):
 		self.canvas.pack(fill="both", expand=True)
 
+	def _apply_mode_palette(self):
+		if self.dark_mode:
+			self.color_bg = "#1A0F10"
+			self.color_bars_fill = "#C5221F"
+			self.color_bars_outline = "#FFB4AB"
+			self.color_demo_text = "#FFEDEA"
+		else:
+			self.color_bg = "#FFF8F7"
+			self.color_bars_fill = "#E53935"
+			self.color_bars_outline = "#5F0F0F"
+			self.color_demo_text = "#3A0A08"
+
 	def toggle_mode(self):
 		self.dark_mode = not self.dark_mode
-		if self.dark_mode:
-			self.color_bg = 'black'  # Black is highly visible in dark mode
-			self.color_bars_fill = 'red'  # White is highly visible in dark mode
-			self.color_bars_outline = 'green'  # Yellow is highly visible in dark mode
-		else:
-			self.color_bg = 'lightgray'  # White is highly visible in light mode
-			self.color_bars_fill = 'red'  # Blue is highly visible in light mode
-			self.color_bars_outline = 'black'  # Black is highly visible in light mode
-
+		self._apply_mode_palette()
 		self.canvas.configure(bg=self.color_bg)
 
-		self.redraw_from_option()
+		if self.file_path:
+			self.redraw_from_option()
+		else:
+			if self.chart:
+				self.chart.flush()
+			self.demo()
 
 	def draw_chart(self, data, scale=1, aspect_ratio=1, flush=False):
 		smart_bars = [SmartBar(i, h, scale=scale) for i, h in enumerate(data)]
@@ -299,13 +312,17 @@ class AnalyzerContext:
 
 	def open_file(self):
 		try:
+			file_path = self.file_path
+			if not file_path:
+				return
+
 			def progress_callback(percent):
 				# Update GUI thread-safe
-				self.status_bar.after(0, lambda:
-					self.status_bar.config(text=f"Loading {self.file_path}: {percent:.1f}%"))
+				self.status_bar.after(0, lambda percent=percent, file_path=file_path:
+					self.status_bar.config(text=f"Loading {file_path}: {percent:.1f}%"))
 
 			# Create processor with callback of progress
-			self.processor = FileResearchProcessor(self.file_path)
+			self.processor = FileResearchProcessor(file_path)
 			self.processor.process_file(progress_callback=progress_callback)
 
 			# Finally
@@ -313,13 +330,14 @@ class AnalyzerContext:
 			self.entropy_string = self.processor.entropies_to_short_string()
 
 			# Update UI when complete
-			self.status_bar.after(0, lambda:
-				self.status_bar.config(text=f"Loaded: {self.file_path}\n{self.entropy_string}"))
+			self.status_bar.after(0, lambda file_path=file_path, entropy_string=self.entropy_string:
+				self.status_bar.config(text=f"Loaded: {file_path}\n{entropy_string}"))
 			self.canvas.after(0, self.redraw_from_option)
 
 		except Exception as e:
 			str_err = str(e)
-			self.status_bar.after(0, lambda: self.status_bar.config(text=f"Error: {str_err}"))
+			self.status_bar.after(0, lambda str_err=str_err:
+				self.status_bar.config(text=f"Error: {str_err}"))
 		finally:
 			# Always re-enable button when done
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
@@ -368,13 +386,18 @@ class AnalyzerContext:
 
 	def save_config(self):
 		global MAX_HEIGHT, ALPHABET
-		mh = int(self.max_height_entry.get())
-		ab = int(self.alphabet_entry.get())
-		sc = float(self.scale_entry.get())
 
-		if mh <= 0: raise ValueError("MAX_HEIGHT must be > 0")
-		if ab <= 0: raise ValueError("ALPHABET must be > 0")
-		if sc <= 0: raise ValueError("Scale must be > 0")
+		try:
+			mh = int(self.max_height_entry.get())
+			ab = int(self.alphabet_entry.get())
+			sc = float(self.scale_entry.get())
+
+			if mh <= 0: raise ValueError("MAX_HEIGHT must be > 0")
+			if ab <= 0: raise ValueError("ALPHABET must be > 0")
+			if sc <= 0: raise ValueError("Scale must be > 0")
+		except ValueError as e:
+			self.status_bar.config(text=f"Configuration error: {e}")
+			return
 
 		MAX_HEIGHT, ALPHABET, self.scale = mh, ab, sc
 		self.redraw_hard()
@@ -415,7 +438,7 @@ class AnalyzerContext:
 		self.smart_bars = data
 		self.draw_chart(data, self.scale, self.aspect_ratio)
 		# Add centered text
-		self.canvas.create_text((ALPHABET*self.scale*self.aspect_ratio)/2, (MAX_HEIGHT*self.scale)/2, font=("TkDefaultFont", int(self.scale*6)), fill="white", text="EntropyVUE Demo")
+		self.canvas.create_text((ALPHABET*self.scale*self.aspect_ratio)/2, (MAX_HEIGHT*self.scale)/2, font=("TkDefaultFont", int(self.scale*6)), fill=self.color_demo_text, text="EntropyVUE Demo")
 
 
 if __name__ == '__main__':
@@ -439,7 +462,7 @@ if __name__ == '__main__':
 	context.button.pack(side=tk.RIGHT)
 	options = FileResearchProcessor.map_human_readable_to_machine_strategies()
 	context.selected_option = tk.StringVar(window)
-	context.selected_option.set("Normalized entropy of input")
+	context.selected_option.set("Normalised symbol-count profile")
 	context.config_button = tk.Button(window, text="Configure", command=context.configure)
 	context.config_button.pack(side=tk.RIGHT)
 	context.toggle_button = tk.Button(window, text="◐", command=context.toggle_mode)
@@ -448,8 +471,11 @@ if __name__ == '__main__':
 	context.option_menu.pack(side=tk.LEFT)
 
 	if args.file_path:
-		context.file_path = args.file_path
-		context.button.config(state=tk.DISABLED)  # Access through context
-		threading.Thread(target=context.open_file, daemon=True).start()
+		if os.path.isfile(args.file_path):
+			context.file_path = args.file_path
+			context.button.config(state=tk.DISABLED)  # Access through context
+			threading.Thread(target=context.open_file, daemon=True).start()
+		else:
+			context.status_bar.config(text=f"Error: file not found: {args.file_path}")
 
 	window.mainloop()

@@ -1,17 +1,24 @@
 # EntropyVUE
 
-EntropyVUE is a Python application that visualizes the entropy of a file. Gain insight into spectre and range of entropy in a file.
+EntropyVUE is a Python application that visualises file content as symbol-count profiles and Shannon entropy. It gives a compact view of distribution shape, density, and high-entropy regions in a file.
 
-EntropyVUE uses Tkinter library for the GUI and requires no outside dependencies,
+EntropyVUE uses the standard-library Tkinter GUI toolkit and has no third-party dependencies. Python 3.10 or newer is required.
 
 ![GUI](.img/gui.png) |
 ---- | 
 
 ## Features
 
-- **Interactive Visualization** (*Vue*): The application provides an interactive visualization of the entropy of the selected file against several entropy algorithms.
-- **Cross-Platform**: EntropyVUE uses cross-platform Python and embedded Tkinter library for the GUI.
-- **Customizability**: Users can configure the `MAX_HEIGHT`, `ALPHABET`, and `Scale` parameters. The user may use `ALPHABET` values over the span of 1 byte.
+- **Interactive Visualisation** (*Vue*): The application displays normalised symbol-count profiles, log-scaled count profiles, and Shannon entropy for the selected file.
+- **Cross-Platform**: EntropyVUE uses cross-platform Python and the embedded Tkinter library for the GUI.
+- **Customisability**: Users can configure the `MAX_HEIGHT`, `ALPHABET`, and `Scale` parameters. `ALPHABET` controls the number of symbol bins. Values up to 256 map individual bytes into bins; larger values use fixed-width multi-byte symbols.
+
+## Displayed measurements
+
+- **Normalised symbol-count profile**: Raw symbol/bin counts scaled to the chart height. This is a distribution profile, not an entropy metric.
+- **Normalised log2/log10 count profile**: Log-scaled count profiles for exposing low-frequency structure.
+- **Shannon entropy of input**: Shannon entropy over the observed symbol/bin distribution, reported in bits per symbol.
+- **Shannon entropy of log2-transformed counts**: Shannon entropy over the log2-transformed count distribution.
 
 ## Usage
 
@@ -30,12 +37,12 @@ python vue.py -f /path/to/file
 
 ## Discover EntropyVUE interactivity
 
-* What does the entropy of a text file (like this README) look like when compared to a ZIP archive?
-* How does the entropy of a deflate ZIP archive file compare to that of a compressed RAR or 7-zip archive file?
-* What's the difference in entropy between an MP3 file and a WAV file?
-* How does the entropy of a JPG file compare to that of a PNG file?
+* How does a text file's symbol-count profile compare to a ZIP archive?
+* How does a deflate ZIP archive compare to a compressed RAR or 7-zip archive?
+* What changes in distribution shape and Shannon entropy between an MP3 file and a WAV file?
+* How does a JPG file compare to a PNG file?
 
-What additional insights can be extracted from these entropy readings?
+What additional structure can be extracted from these distribution and entropy readings?
 
 -----------------------------------
 
