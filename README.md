@@ -1,5 +1,10 @@
 # EntropyVUE
 
+[![GitHub](https://img.shields.io/badge/GitHub-TAbdiukov/EntropyVUE-black?logo=github)](https://github.com/TAbdiukov/EntropyVUE)
+![License](https://img.shields.io/github/license/TAbdiukov/EntropyVUE)
+
+[![buymeacoffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tabdiukov)
+
 Visualise the structure and entropy of files.
 
 It uses Tkinter, has no third-party dependencies, and requires Python 3.10 or newer.
