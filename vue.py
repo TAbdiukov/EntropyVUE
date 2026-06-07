@@ -56,7 +56,7 @@ class FileResearchProcessor:
 		'normalized[log2(in)]': {"human_readable": "Normalised log2 count profile", 'func': '_calculate_entropy_log2_normalized'},
 		'normalized[log10(in)]': {"human_readable": "Normalised log10 count profile", 'func': '_calculate_entropy_log10_normalized'},
 		'shannon(in)': {"human_readable": "Shannon entropy of input", 'func': '_calculate_shannon_entropy'},
-		'shannon[log2(in)]': {"human_readable": "Shannon entropy of Log2 of input", 'func': '_calculate_entropy_log2_shannon'}
+		'shannon[log2(in)]': {"human_readable": "Shannon entropy of log2-transformed counts", 'func': '_calculate_entropy_log2_shannon'}
 	}
 
 	def __init__(self, filename):
@@ -148,7 +148,7 @@ class FileResearchProcessor:
 					progress_callback(100.0)
 
 		except Exception as e:
-			raise RuntimeError(f"File processing failed: {str(e)}")
+			raise RuntimeError(f"File processing failed: {e}") from e
 
 	def _calculate_normalized_entropy(self):
 		freqs = self.listing
@@ -165,36 +165,33 @@ class FileResearchProcessor:
 		probs = [c / total for c in counts]
 		per_symbol = [(-p * log2(p)) if p > 0 else 0.0 for p in probs]
 		H = sum(per_symbol)                       # bits/symbol
-		H_norm = H / log2(len(counts)) if len(counts) > 1 else 0.0
-		return H, per_symbol  # chart will scale; show H or H_norm in the status text
+		return H, per_symbol  # chart will scale; status text shows H
 
 	def _calculate_entropy_log2_shannon(self):
-		counts = [log2(c + 1) for c in self.listing]
-		total = sum(counts)
+		weights = [log2(c + 1) for c in self.listing]
+		total = sum(weights)
 		if total == 0:
-			return 0.0, [0.0] * len(counts)
+			return 0.0, [0.0] * len(weights)
 
 		dataset = []
-		for c in counts:
-			p = c / total
-			dataset.append(-p * log2(p) * 100 if p > 0 else 0.0)
+		for weight in weights:
+			p = weight / total
+			dataset.append(-p * log2(p) if p > 0 else 0.0)
 
-		entropy = sum(dataset) / 100
+		entropy = sum(dataset)
 		return entropy, dataset
 
 	def _calculate_entropy_log2_normalized(self):
-		freqs = self.listing.copy()
-		dataset = [round(log2(v + 1) * 100) for v in freqs]
-		c = max(dataset) or 1
-		dataset = [d / c * 100 for d in dataset]
+		dataset = [log2(v + 1) for v in self.listing]
+		c = max(dataset) or 1.0
+		dataset = [d / c * 100.0 for d in dataset]
 		entropy = sum(dataset) / (len(dataset) or 1)
 		return entropy, dataset
 
 	def _calculate_entropy_log10_normalized(self):
-		freqs = self.listing.copy()
-		dataset = [round(log10(v + 1) * 100) for v in freqs]
-		c = max(dataset) or 1
-		dataset = [d / c * 100 for d in dataset]
+		dataset = [log10(v + 1) for v in self.listing]
+		c = max(dataset) or 1.0
+		dataset = [d / c * 100.0 for d in dataset]
 		entropy = sum(dataset) / (len(dataset) or 1)
 		return entropy, dataset
 
@@ -343,12 +340,15 @@ class AnalyzerContext:
 			self.button.after(0, lambda: self.button.config(state=tk.NORMAL))
 
 	def open_file_interactive(self):
-		self.file_path = filedialog.askopenfilename()
+		file_path = filedialog.askopenfilename()
 
-		if self.file_path:
-			self.button.config(state=tk.DISABLED)
-			self.status_bar.config(text="Initializing...")
-			threading.Thread(target=self.open_file, daemon=True).start()
+		if not file_path:
+			return
+
+		self.file_path = file_path
+		self.button.config(state=tk.DISABLED)
+		self.status_bar.config(text="Initializing...")
+		threading.Thread(target=self.open_file, daemon=True).start()
 
 	def configure(self):
 		window = tk.Toplevel()
@@ -449,7 +449,12 @@ if __name__ == '__main__':
 	window = tk.Tk()
 	window.title("EntropyVUE")
 	context = AnalyzerContext()
-	context.canvas = tk.Canvas(window, width=ALPHABET*context.scale*context.aspect_ratio, height=MAX_HEIGHT*context.scale,bg=context.color_bg)
+	context.canvas = tk.Canvas(
+		window,
+		width=0 + ALPHABET*context.scale*context.aspect_ratio,
+		height=0 + MAX_HEIGHT*context.scale,
+		bg=context.color_bg
+	)
 	context.demo()
 	context.label = tk.Label(window, text="")
 	context.label.pack()
